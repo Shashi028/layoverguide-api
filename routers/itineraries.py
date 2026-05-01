@@ -9,7 +9,7 @@ from auth import verify_token
 router = APIRouter(prefix="/itineraries", tags=["Itineraries"])
 
 # 2. Define the GET endpoint
-@router.get("/", response_model=List[ItineraryResponse])
+@router.get("", response_model=List[ItineraryResponse])
 def search_itineraries(airport_id: str, min_hrs: float, max_hrs: float):
     
     # Your database stores time in minutes, but users search in hours.
@@ -28,7 +28,7 @@ async def get_itinerary(itinerary_id: UUID):
     except:
         raise HTTPException(status_code=404, detail="Itinerary not found")
     
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 async def create_itinerary(itinerary: ItineraryCreate, user_id: str = Depends(verify_token)):
     
     # Step 1: Check airport exists
