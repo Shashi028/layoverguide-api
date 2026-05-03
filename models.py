@@ -25,6 +25,7 @@ class ItineraryResponse(BaseModel):
     submission_date: datetime
     upvotes: list = []
     upvote_count: int = 0
+    exit_transport_mode: Optional[str] = None
 
 class ItineraryCreate(BaseModel):
     airport_id: UUID
@@ -34,4 +35,5 @@ class ItineraryCreate(BaseModel):
     departure_terminal: Optional[str] = None
     user_rating: Optional[int] = Field(None,ge=1, le=10)
     notes: Optional[str] = None
+    exit_transport_mode: Optional[str] = None
     
