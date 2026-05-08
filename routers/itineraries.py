@@ -4,6 +4,7 @@ from database import supabase
 from models import ItineraryResponse, ItineraryCreate
 from uuid import UUID
 from auth import verify_token
+from datetime import datetime, timedelta, timezone
 
 # 1. Create the router
 router = APIRouter(prefix="/itineraries", tags=["Itineraries"])
@@ -35,6 +36,23 @@ async def create_itinerary(itinerary: ItineraryCreate, user_id: str = Depends(ve
     airport = supabase.table('airports').select('*').eq('airport_id', itinerary.airport_id).execute()
     if not airport.data:
         raise HTTPException(status_code=404, detail="Airport not found")
+    
+    thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    previous_submission = supabase.table('itineraries')\
+        .select('*').eq('user_id', user_id).eq('airport_id', itinerary.airport_id).eq('layover_duration_mins', itinerary.layover_duration_mins).gte('submission_date', thirty_days_ago).execute()
+    if len(previous_submission.data) >= 1:
+        raise HTTPException(status_code=409, detail="Itinerary already submitted")
+        
+    
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    recent_submissions = supabase.table('itineraries')\
+        .select('itinerary_id')\
+        .eq('user_id', user_id)\
+        .gte('submission_date', one_hour_ago)\
+        .execute()
+    if len(recent_submissions.data) >= 5:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 5 submissions per hour.")
+    
     
     # Step 2: Validate time_to_exit_mins
     if itinerary.time_to_exit_mins is not None:
