@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from typing import List, Optional
 from database import supabase
 from models import ItineraryResponse, ItineraryCreate
 from uuid import UUID
@@ -11,20 +11,23 @@ router = APIRouter(prefix="/itineraries", tags=["Itineraries"])
 
 # 2. Define the GET endpoint
 @router.get("", response_model=List[ItineraryResponse])
-def search_itineraries(airport_id: str, min_hrs: float, max_hrs: float):
+def search_itineraries(airport_id: str, min_hrs: float, max_hrs: float,tag_id: Optional[int] = None):
     
     # Your database stores time in minutes, but users search in hours.
     min_mins = int(min_hrs * 60)
     max_mins = int(max_hrs * 60)
-
-    response = supabase.table('itineraries').select('*').eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
+    
+    if tag_id is not None:
+        response = supabase.table('itineraries').select('*, itinerary_tags!inner(tag_id)').eq('itinerary_tags.tag_id', tag_id).eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
+    else:
+        response = supabase.table('itineraries').select('*').eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
     
     return response.data
 
 @router.get("/{itinerary_id}")
 async def get_itinerary(itinerary_id: UUID):
     try:
-        result = supabase.table('itineraries').select('*, upvotes(count)').eq('itinerary_id', itinerary_id).single().execute()
+        result = supabase.table('itineraries').select('*, upvotes(count), itinerary_tags(tag_id, tags(name))').eq('itinerary_id', itinerary_id).single().execute()
         return result.data
     except:
         raise HTTPException(status_code=404, detail="Itinerary not found")
@@ -62,9 +65,15 @@ async def create_itinerary(itinerary: ItineraryCreate, user_id: str = Depends(ve
     # Step 3: Build the data dict and insert
     data = itinerary.model_dump(mode='json')
     data['user_id'] = user_id 
+    data.pop('tag_ids', None)
     
     result = supabase.table('itineraries').insert(data).execute()
+    new_itinerary_id = result.data[0]['itinerary_id']
+    tag_rows = [{'itinerary_id': new_itinerary_id, 'tag_id': tag_id} for tag_id in itinerary.tag_ids]
+    if tag_rows:
+        supabase.table('itinerary_tags').insert(tag_rows).execute()
     return result.data[0] 
+
 
 @router.post("/{itinerary_id}/upvote")
 async def toggle_upvote(itinerary_id: UUID, user_id: str = Depends(verify_token)):

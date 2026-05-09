@@ -2,6 +2,9 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
+from typing import Optional, Literal
+
+TransportMode = Literal['walk', 'taxi', 'metro', 'bus', 'bike_taxi', 'other']
 
 # This class defines what an Airport looks like when we send it to the user.
 class AirportResponse(BaseModel):
@@ -35,5 +38,6 @@ class ItineraryCreate(BaseModel):
     departure_terminal: Optional[str] = None
     user_rating: Optional[int] = Field(None,ge=1, le=10)
     notes: Optional[str] = None
-    exit_transport_mode: Optional[str] = None
+    exit_transport_mode: Optional[TransportMode] = None
+    tag_ids: Optional[list[int]] = []
     
