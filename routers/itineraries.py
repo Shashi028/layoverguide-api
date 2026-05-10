@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from database import supabase
 from models import ItineraryResponse, ItineraryCreate
@@ -6,22 +6,24 @@ from uuid import UUID
 from auth import verify_token
 from datetime import datetime, timedelta, timezone
 
+#venv\Scripts\activate
+#uvicorn main:app --reload
+
 # 1. Create the router
 router = APIRouter(prefix="/itineraries", tags=["Itineraries"])
 
 # 2. Define the GET endpoint
-@router.get("", response_model=List[ItineraryResponse])
-def search_itineraries(airport_id: str, min_hrs: float, max_hrs: float,tag_id: Optional[int] = None):
+@router.get("")
+def search_itineraries(airport_id: str, min_hrs: float, max_hrs: float,tag_ids: List[int] = Query(default=[])):
     
     # Your database stores time in minutes, but users search in hours.
     min_mins = int(min_hrs * 60)
     max_mins = int(max_hrs * 60)
     
-    if tag_id is not None:
-        response = supabase.table('itineraries').select('*, itinerary_tags!inner(tag_id)').eq('itinerary_tags.tag_id', tag_id).eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
+    if tag_ids:
+        response = supabase.table('itineraries').select('*, itinerary_tags!inner(tag_id, tags(name))').in_('itinerary_tags.tag_id', tag_ids).eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
     else:
-        response = supabase.table('itineraries').select('*').eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
-    
+        response = supabase.table('itineraries').select('*, itinerary_tags(tag_id, tags(name))').eq("airport_id", airport_id).gte("layover_duration_mins", min_mins).lte("layover_duration_mins", max_mins).execute()
     return response.data
 
 @router.get("/{itinerary_id}")

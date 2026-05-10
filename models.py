@@ -29,6 +29,8 @@ class ItineraryResponse(BaseModel):
     upvotes: list = []
     upvote_count: int = 0
     exit_transport_mode: Optional[str] = None
+    price_tier: int | None = None
+    time_of_day: str | None = None
 
 class ItineraryCreate(BaseModel):
     airport_id: UUID
@@ -40,4 +42,6 @@ class ItineraryCreate(BaseModel):
     notes: Optional[str] = None
     exit_transport_mode: Optional[TransportMode] = None
     tag_ids: Optional[list[int]] = []
+    price_tier: int | None = None
+    time_of_day: str | None = None
     
